@@ -1,3 +1,29 @@
+//! # altstream-api
+//!
+//! Rust API wrapper for the alternative streaming platform [AltStream Online](https://altstream.online/)
+//!
+//! ## Disclaimer
+//!
+//! This library is not well tested, and the AltStream API is brand new and may see breaking changes in the future. Use at your own risk.
+//!
+//! ## Example
+//!
+//! ```
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let username = "letsgoashe"; // The creator of AltStream!
+//! let channel_info = altstream_api::get_channel_info(username).await?;
+//!
+//! let bio: Option<String> = channel_info.bio;
+//!
+//! let live: bool = channel_info.stream.is_live;
+//!
+//! let game: String = channel_info.stream.game.ok_or("No game")?.name;
+//!
+//! # Ok(())
+//! # }
+//! ```
+
 use std::{error::Error, format};
 
 use serde::Deserialize;
@@ -9,7 +35,7 @@ const BASE: &str = "https://altstream.online/api/v1";
 async fn request(url: &str) -> Result<String, Box<dyn Error>> {
     let body = reqwest::get(url).await?.text().await?;
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "api_debug")]
     eprintln!("Response from {}:\n{}", url, body);
 
     Ok(body)
@@ -45,32 +71,116 @@ where
     wrapped.data()
 }
 
+/// Get information about a channel.
+///
+/// # Example
+/// ```
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let channel_info = altstream_api::get_channel_info("letsgoashe").await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub async fn get_channel_info(username: &str) -> Result<ChannelInfo, Box<dyn Error>> {
     parse_unwrap_response(&request(&format!("{BASE}/channels/{username}")).await?)
 }
 
+/// Get information about a channel's panels.
+///
+/// # Example
+/// ```
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let panels = altstream_api::get_channel_panels("letsgoashe").await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub async fn get_channel_panels(username: &str) -> Result<Panels, Box<dyn Error>> {
     parse_unwrap_response(&request(&format!("{BASE}/channels/{username}/panels")).await?)
 }
 
+/// Get information about a channel's rewards.
+///
+/// # Example
+/// ```
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let rewards = altstream_api::get_channel_rewards("letsgoashe").await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub async fn get_channel_rewards(username: &str) -> Result<ChannelRewards, Box<dyn Error>> {
     parse_unwrap_response(&request(&format!("{BASE}/channels/{username}/rewards")).await?)
 }
 
+/// Get information about a channel's emotes.
+///
+/// # Example
+/// ```
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let emotes = altstream_api::get_channel_emotes("letsgoashe").await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub async fn get_channel_emotes(username: &str) -> Result<ChannelEmotes, Box<dyn Error>> {
     parse_unwrap_response(&request(&format!("{BASE}/channels/{username}/emotes")).await?)
 }
 
+/// Get information about a stream's tags.
+///
+/// # Example
+/// ```
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let tags = altstream_api::get_stream_tags("letsgoashe").await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub async fn get_stream_tags(username: &str) -> Result<StreamTags, Box<dyn Error>> {
     parse_unwrap_response(&request(&format!("{BASE}/channels/{username}/tags")).await?)
 }
 
+/// Get information about a user's settings.
+///
+/// # Example
+/// ```
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let settings = altstream_api::get_user_settings("letsgoashe").await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub async fn get_user_settings(username: &str) -> Result<UserSettings, Box<dyn Error>> {
     // user settings is the only endpoint that doesn't return a wrapped response,
     // so we use parse_response instead of parse_unwrap_response
     parse_response(&request(&format!("{BASE}/user-settings/{username}")).await?)
 }
 
+/// Get information about a user's settings for a specific channel.
+///
+/// # Example
+/// ```
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let settings = altstream_api::get_user_channel_settings("soweliluna", "letsgoashe").await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub async fn get_user_channel_settings(
     username: &str,
     channel: &str,
@@ -83,9 +193,9 @@ pub async fn get_user_channel_settings(
     )
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
 /// Result-alike enum for AltStream API responses that can either contain data or an error message.
 enum AltStreamResult<T> {
     Data(T),
@@ -93,6 +203,9 @@ enum AltStreamResult<T> {
 }
 
 impl<T> AltStreamResult<T> {
+    /// Get the data from the result, or return an error if the result is an error.
+    ///
+    /// Essentially converts the result-alike transmission type into a proper Rust `Result`.
     fn data(self) -> Result<T, Box<dyn Error>> {
         match self {
             AltStreamResult::Data(data) => Ok(data),
@@ -101,10 +214,12 @@ impl<T> AltStreamResult<T> {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
-
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// A user's settings.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct UserSettings {
     pub user_number: i64,
     pub name: String,
@@ -136,17 +251,23 @@ pub struct UserSettings {
     pub is_referral_badge_unlocked: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// A channel's emotes.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct ChannelEmotes {
     pub channel: String,
     pub emotes: Vec<ChannelEmoteInfo>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// Information about a channel emote.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct ChannelEmoteInfo {
     pub id: i64,
     pub name: String,
@@ -154,17 +275,23 @@ pub struct ChannelEmoteInfo {
     pub display_order: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// A channel's rewards.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct ChannelRewards {
     pub channel: String,
     pub rewards: Vec<ChannelRewardInfo>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// Information about a channel reward.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct ChannelRewardInfo {
     pub id: i64,
     pub name: String,
@@ -179,17 +306,23 @@ pub struct ChannelRewardInfo {
     pub max_global_per_stream: Option<u64>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// A channel's panels.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct Panels {
     pub channel: String,
     pub panels: Vec<PanelInfo>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// Information about a channel panel.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct PanelInfo {
     pub id: i64,
     pub slug: String,
@@ -198,9 +331,12 @@ pub struct PanelInfo {
     pub display_order: i64,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// Information about a channel.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct ChannelInfo {
     pub avatar_url: String,
     pub bio: Option<String>,
@@ -211,9 +347,12 @@ pub struct ChannelInfo {
     pub username: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// Information about a channel's stream.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct StreamInfo {
     pub is_live: bool,
     #[serde(with = "time::serde::iso8601::option")]
@@ -225,17 +364,23 @@ pub struct StreamInfo {
     pub tags: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// Tags associated with a channel's stream.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct StreamTags {
     pub channel: String,
     pub tags: Vec<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-#[cfg_attr(debug_assertions, serde(deny_unknown_fields))]
+#[cfg_attr(feature = "api_debug", serde(deny_unknown_fields))]
+/// Information about a game.
+///
+/// See [AltStream Online API documentation](https://altstream.online/documentation?tab=api).
 pub struct GameInfo {
     pub id: i64,
     pub igdb_id: Option<i64>,

@@ -2,9 +2,18 @@
 name = "altstream-api"
 version = "0.1.0"
 edition = "2024"
+license-file = "LICENSE"
+repository = "https://github.com/soweli-Luna/altstream-api"
+description = "Rust API wrapper for the alternative streaming platform AltStream Online"
+categories = ["api-bindings", "network-programming"]
+authors = ["soweli luna <soweliluna@gmail.com>"]
+
+[features]
+api_debug = []
 
 [dependencies]
 reqwest = "0.13.5"
 serde = { version = "1.0.229", features = ["serde_derive"] }
 serde_json = "1.0.154"
 time = { version = "0.3.55", features = ["parsing", "serde"] }
+tokio = { version = "1.53.2", features = ["macros", "rt-multi-thread"] }
