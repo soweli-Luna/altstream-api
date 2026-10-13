@@ -1,12 +1,14 @@
 [package]
 name = "altstream-api"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license-file = "LICENSE"
 repository = "https://github.com/soweli-Luna/altstream-api"
 description = "Rust API wrapper for the alternative streaming platform AltStream Online"
 categories = ["api-bindings", "network-programming"]
 authors = ["soweli luna <soweliluna@gmail.com>"]
+readme = "README.md"
+documentation = "https://docs.rs/altstream-api"
 
 [features]
 api_debug = []
