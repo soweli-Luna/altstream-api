@@ -4,4 +4,4 @@ Rust API wrapper for the alternative streaming platform [AltStream Online](https
 
 ## Disclaimer
 
-This library is incomplete and not well tested, and the AltStream API is brand new and may see breaking changes in the future. Use at your own risk.
+This library is not well tested, and the AltStream API is brand new and may see breaking changes in the future. Use at your own risk.
