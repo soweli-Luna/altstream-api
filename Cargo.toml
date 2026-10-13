@@ -1,0 +1,10 @@
+[package]
+name = "altstream-api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+reqwest = "0.13.5"
+serde = { version = "1.0.229", features = ["serde_derive"] }
+serde_json = "1.0.154"
+time = { version = "0.3.55", features = ["parsing", "serde"] }
