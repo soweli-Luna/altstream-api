@@ -1,7 +1,5 @@
 use std::error::Error;
 
-use crate::transmission_types::AltStreamResult;
-
 /// Helper function to make a GET request to the AltStream API and return the response body as a string.
 pub async fn request(url: &str) -> Result<String, Box<dyn Error>> {
     let body = reqwest::get(url).await?.text().await?;
@@ -37,7 +35,7 @@ pub fn parse_unwrap_response<T>(json_str: &str) -> Result<T, Box<dyn Error>>
 where
     T: serde::de::DeserializeOwned,
 {
-    let wrapped: AltStreamResult<T> = serde_json::from_str(json_str)?;
+    let wrapped: crate::AltStreamResult<T> = serde_json::from_str(json_str)?;
 
     wrapped.data()
 }

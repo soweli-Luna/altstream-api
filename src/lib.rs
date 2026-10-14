@@ -25,9 +25,8 @@
 //! ```
 
 mod api;
-mod pub_transmission_types;
 mod request;
 mod transmission_types;
 
 pub use api::*;
-pub use pub_transmission_types::*;
+pub use transmission_types::*;
